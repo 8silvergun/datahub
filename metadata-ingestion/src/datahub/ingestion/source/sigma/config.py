@@ -219,8 +219,9 @@ class SigmaSourceReport(StaleEntityRemovalSourceReport):
     # Per ref: resolved to the one element with that name and column in a Data
     # Model the workbook loads, though not a declared upstream of the chart.
     chart_input_fields_loaded_dm_resolved: int = 0
-    # Per column: a column computed only from sibling columns that inherited
-    # their upstreams. Counted in resolved, not skipped_sibling.
+    # Per column: a column computed only from sibling columns (and parameters)
+    # that inherited their upstreams. Moves to resolved from skipped_sibling, or
+    # from self_ref_fallback when its formula also has parameters.
     chart_input_fields_sibling_inherited: int = 0
     # Workbooks whose /columns pagination aborted partway through. InputFields
     # for those workbooks may be missing columns that appear after the failure.

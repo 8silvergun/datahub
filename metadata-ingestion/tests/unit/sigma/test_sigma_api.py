@@ -2381,6 +2381,45 @@ class TestDataModelElementOwner:
         ]
         return dm
 
+    def test_a_join_elements_lineage_payload_lists_every_joined_table(self) -> None:
+        """The /lineage shape a Data Model join element has, from a test tenant:
+        a chained join A-B, B-C lists all three elements directly."""
+        source = _create_sigma_source(ingest_data_models=True)
+        dm = self._make_dm_with_one_element()
+        elements = [
+            SigmaDataModelElement(elementId=eid, name=eid.upper(), type="table")
+            for eid in ("a", "b", "c", "j")
+        ]
+        lineage = [
+            {"type": "element", "elementId": "a", "sourceIds": ["inode-x"]},
+            {"type": "element", "elementId": "b", "sourceIds": ["inode-x"]},
+            {"type": "element", "elementId": "c", "sourceIds": ["inode-x"]},
+            {"type": "element", "elementId": "j", "sourceIds": ["a", "b", "c"]},
+            {"type": "table", "nodeId": "inode-x", "name": "T"},
+        ]
+        with (
+            patch.object(
+                source.sigma_api, "_get_data_model_elements", return_value=elements
+            ),
+            patch.object(source.sigma_api, "_get_data_model_columns", return_value=[]),
+            patch.object(
+                source.sigma_api,
+                "_get_data_model_lineage_entries",
+                return_value=lineage,
+            ),
+        ):
+            source.sigma_api._assemble_data_model(dm, None)
+        source._prepopulate_dm_bridge_maps(dm)
+
+        urn = {
+            e.elementId: source._gen_data_model_element_urn(dm, e) for e in dm.elements
+        }
+        assert source._dm_element_source_urns[urn["j"]] == {
+            urn["a"],
+            urn["b"],
+            urn["c"],
+        }
+
     def test_a_join_elements_lineage_sources_are_recorded(self) -> None:
         source = _create_sigma_source(ingest_data_models=True)
         dm = self._make_dm_with_one_element()

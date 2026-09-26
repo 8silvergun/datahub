@@ -1470,12 +1470,41 @@ class TestChartRefStrategies:
         chart = _make_element_with_formula(
             "chart-1", "Chart", {"Sku": "[Owner El/Sku]"}
         )
+        chart.upstream_sources = {
+            "dm1/y": DataModelElementUpstream(name="Join El", data_model_url_id="dm1")
+        }
         loader = _make_element("loader", "Loader")
         loader.upstream_sources = {
             "dm1/x": DataModelElementUpstream(name="Join El", data_model_url_id="dm1")
         }
         assert self._chart_fields([chart, loader], "chart-1") == [
             f"urn:li:schemaField:({_OWNER_URN},Sku)"
+        ]
+
+    @pytest.mark.parametrize("lineage", ["none", "unnamed-dataset", "customsql"])
+    def test_unknown_chart_lineage_skips_the_loaded_data_model_lookup(
+        self, lineage: str
+    ) -> None:
+        chart = _make_element_with_formula(
+            "chart-1", "Chart", {"Sku": "[Owner El/Sku]"}
+        )
+        if lineage == "unnamed-dataset":
+            chart.upstream_sources = {"ds": DatasetUpstream(name=None)}
+        elif lineage == "customsql":
+            chart.upstream_sources = {
+                "dm1/y": DataModelElementUpstream(
+                    name="Join El", data_model_url_id="dm1"
+                )
+            }
+            self.src._workbook_customsql_registered_urns = {
+                "urn:li:chart:(sigma,chart-1)"
+            }
+        loader = _make_element("loader", "Loader")
+        loader.upstream_sources = {
+            "dm1/x": DataModelElementUpstream(name="Join El", data_model_url_id="dm1")
+        }
+        assert self._chart_fields([chart, loader], "chart-1") == [
+            "urn:li:schemaField:(urn:li:chart:(sigma,chart-1),Sku)"
         ]
 
     @pytest.mark.parametrize(
