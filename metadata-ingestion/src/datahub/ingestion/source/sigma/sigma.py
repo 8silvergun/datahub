@@ -3961,10 +3961,10 @@ class SigmaSource(StatefulIngestionSourceBase, TestableSource):
         must have the column. A relationship's target is not a source, so
         ``[Element/Relationship/Column]`` stays unresolved.
         """
-        join_name = _match_name(ref.segments[0], dm_upstream_urn_by_element_name)
-        if join_name is None:
+        join_urns = _dm_upstream_urns(ref.segments[0], dm_upstream_urn_by_element_name)
+        if len(join_urns) != 1:
             return None
-        join_urn = dm_upstream_urn_by_element_name[join_name]
+        join_urn = join_urns.pop()
         dm_key = self._dm_key_by_element_urn.get(join_urn)
         if dm_key is None:
             return None
@@ -4476,12 +4476,13 @@ class SigmaSource(StatefulIngestionSourceBase, TestableSource):
                     )
                 )
         return self._inherit_sibling_upstreams(
-            fields, upstreams_by_column, sibling_pending
+            fields, element.columns, upstreams_by_column, sibling_pending
         )
 
     def _inherit_sibling_upstreams(
         self,
         fields: List[InputFieldClass],
+        columns: List[str],
         upstreams_by_column: Dict[str, List[str]],
         sibling_pending: Dict[str, Tuple[int, List[str], str]],
     ) -> List[InputFieldClass]:
@@ -4502,9 +4503,11 @@ class SigmaSource(StatefulIngestionSourceBase, TestableSource):
             for column, (_, sibling_names, _) in sibling_pending.items():
                 union = list(known.get(column, []))
                 for name in sibling_names:
-                    sibling = _match_name(name, known)
+                    # Matched against every column, so an exact spelling with
+                    # no upstream is not replaced by a case variant with one.
+                    sibling = _match_name(name, columns)
                     if sibling is not None:
-                        union.extend(known[sibling])
+                        union.extend(known.get(sibling, []))
                 union = list(dict.fromkeys(union))
                 if len(union) > len(known.get(column, [])):
                     known[column] = union

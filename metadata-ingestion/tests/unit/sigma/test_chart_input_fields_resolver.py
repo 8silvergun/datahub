@@ -1389,6 +1389,14 @@ class TestChartRefStrategies:
         assert self._resolve(body, dm_urns=dm_urns) is None
         assert self.src.reporter.chart_input_fields_multi_segment_refused == 1
 
+    def test_join_element_keys_differing_in_case_for_one_element_resolve(
+        self,
+    ) -> None:
+        result = self._resolve(
+            "join el/Owner El/Sku", dm_urns={"Join El": _JOIN_URN, "JOIN EL": _JOIN_URN}
+        )
+        assert result == (_OWNER_URN, "Sku")
+
     def test_loaded_data_model_element_resolves_when_one_owns_the_column(self) -> None:
         result = self._resolve("owner el/Sku", workbook_dm_url_ids=frozenset({"dm1"}))
         assert result == (_OWNER_URN, "Sku")
@@ -1586,6 +1594,13 @@ class TestSiblingInheritance:
             "Cost",
             "Price",
         ]
+
+    def test_an_exact_sibling_spelling_beats_a_case_variant(self) -> None:
+        urns = self._fields(
+            {"Amount": "[ORDERS/Amount]", "amount": None, "Total": "Sum([amount])"}
+        )
+        assert urns[2] == "urn:li:schemaField:(urn:li:chart:(sigma,chart-1),Total)"
+        assert self.src.reporter.chart_input_fields_sibling_inherited == 0
 
     def test_a_deep_chain_resolves(self) -> None:
         formulas: Dict[str, Optional[str]] = {
